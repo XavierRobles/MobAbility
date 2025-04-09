@@ -9,9 +9,11 @@
 
 ## Description (English)
 
-Mobability is an addon for Final Fantasy XI that displays real-time alerts for mob actions in combat according to your selected mode. The addon detects events such as when a mob **starts casting** a spell or **readies** a TP move. Alerts are shown in a floating window using a clear, color-coded system to distinguish the components of each alert:
+Mobability is an addon for Final Fantasy XI that displays real-time alerts for mob actions in combat based on your selected alert mode. The addon detects events such as when a mob begins to cast a spell or performs a TP move, and shows the alerts in a floating window. The notifications appear in different colors, which help differentiate between:
 
-Mobability is an addon for Final Fantasy XI that displays real-time alerts for mob actions in combat based on the selected alert mode. It detects events such as when a mob starts casting a spell or readies a TP move, and shows the alerts in a floating window where the text appears in colors. This color coding makes it easier to visually identify the important information in each alert, and all settings can be fully customized to suit your preferences.
+- The mob's name.
+- The action performed (spell or TP move).
+- The target of the action.
 
 Mobability operates in two alert modes:
 - **Only your current target:** Alerts are generated only for the mob that you have targeted.
@@ -21,12 +23,29 @@ Additional features include configurable options such as limiting the number of 
 
 ### Installation
 
-This addon is distributed as a complete package. Simply copy the Mobability folder into your Ashita addons directory.
+1. **Step 1:**  
+   Copy the `Mobability` folder into the Ashita addons directory or into the game client folder. For example:  
+   `HorizonXI\Game\addons`
+
+2. **Step 2:**  
+   - **Automatic Loading:**  
+     To have the addon load automatically when the game starts, open the `default.txt` file located in the `scripts` folder and add the following line in the addons section or at the end of the file:  
+     ```
+     /addon load mobability
+     ```
+   - **Manual Loading:**  
+     To load the addon manually in-game, type the following command in chat:  
+     ```
+     /addon load mobability
+     ```
+
+Following these steps will load the addon so you can start using it.
 
 ### Usage
 
 - **Opening the Configuration:**  
-  In Ashita, type `/mb` or `/mobability` in the chat to open the Mobability configuration window.
+In game, type `/mb` or `/mobability` in the chat to open the Mobability configuration window.
+
 
 - **Floating Alerts:**  
   Alerts will automatically appear on-screen during combat for up to 10 seconds (or until the action finishes).
@@ -82,7 +101,11 @@ This addon is distributed as a complete package. Simply copy the Mobability fold
 
 ## Descripción (Español)
 
-Mobability es un addon para Final Fantasy XI que muestra alertas en tiempo real sobre las acciones de los mobs en combate, basándose en el modo de alerta seleccionado. Detecta eventos como cuando un mob starts casting un hechizo o readies un TP move, y muestra los avisos en una ventana flotante en la que los textos aparecen en colores. Esto permite identificar visualmente la información importante de cada alerta, y la configuración es completamente personalizable para adaptarse a las preferencias del usuario.
+Mobability es un addon para Final Fantasy XI que muestra alertas en tiempo real sobre las acciones de los mobs durante el combate, en función del modo de alerta que selecciones. El addon detecta eventos, por ejemplo, cuando un mob empieza a lanzar un hechizo o ejecuta un movimiento especial (TP move), y muestra las alertas en una ventana flotante. Los avisos se presentan en distintos colores, lo que facilita distinguir entre: 
+
+- El nombre del mob.
+- La acción que realiza (hechizo o TP move).
+- El objetivo o receptor de la acción.
 
 Mobability funciona en dos modos de alerta:
 - **Solo tu objetivo actual:** Se generan alertas únicamente para el mob que tengas seleccionado.
@@ -92,12 +115,28 @@ Entre sus características se incluyen opciones configurables para limitar el n�
 
 ### Instalación
 
-El addon se distribuye como un paquete completo. Copia la carpeta Mobability en el directorio de addons de Ashita.
+1. **Paso 1:**  
+   Copia la carpeta `Mobability` en el directorio de addons de Ashita o en la carpeta del cliente del juego. Por ejemplo:  
+   `HorizonXI\Game\addons`
+
+2. **Paso 2:**  
+   - **Carga automática:**  
+     Para que el addon se ejecute automáticamente al iniciar el juego, abre el archivo `default.txt` que se encuentra en la carpeta `scripts` y añade la siguiente línea en la sección de addons o al final del archivo:  
+     ```
+     /addon load mobability
+     ```
+   - **Carga manual:**  
+     Dentro del juego, abre el chat y escribe:  
+     ```
+     /addon load mobability
+     ```
+
+Con estos pasos, el addon se cargará y estará listo para usar.
 
 ### Uso
 
 - **Abrir la Configuración:**  
-  En Ashita, escribe `/mb` o `/mobability` en el chat para abrir la ventana de configuración de Mobability.
+  En el juego, escribe `/mb` o `/mobability` en el chat para abrir la ventana de configuración de Mobability.
 
 - **Alertas Flotantes:**  
   Las alertas se mostrarán automáticamente en combate y permanecerán en pantalla hasta 10 segundos (o hasta que la acción finalice).
