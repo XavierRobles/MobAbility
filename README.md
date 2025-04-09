@@ -11,9 +11,7 @@
 
 Mobability is an addon for Final Fantasy XI that displays real-time alerts for mob actions in combat according to your selected mode. The addon detects events such as when a mob **starts casting** a spell or **readies** a TP move. Alerts are shown in a floating window using a clear, color-coded system to distinguish the components of each alert:
 
-- **Mob Name:** Shown in red.
-- **Action:** The spell or TP move is highlighted in a distinct color.
-- **Target:** Displayed in a contrasting color.
+Mobability is an addon for Final Fantasy XI that displays real-time alerts for mob actions in combat based on the selected alert mode. It detects events such as when a mob starts casting a spell or readies a TP move, and shows the alerts in a floating window where the text appears in colors. This color coding makes it easier to visually identify the important information in each alert, and all settings can be fully customized to suit your preferences.
 
 Mobability operates in two alert modes:
 - **Only your current target:** Alerts are generated only for the mob that you have targeted.
@@ -84,11 +82,7 @@ This addon is distributed as a complete package. Simply copy the Mobability fold
 
 ## Descripción (Español)
 
-Mobability es un addon para Final Fantasy XI que muestra alertas en tiempo real sobre las acciones de los mobs en combate, basándose en el modo de alerta seleccionado. El addon detecta eventos como cuando un mob **starts casting** un hechizo o **readies** un TP move, y muestra alertas en una ventana flotante con un sistema de colores que distingue claramente los siguientes elementos:
-
-- **Nombre del mob:** Aparece en rojo.
-- **Acción:** El hechizo o TP move se resalta en un color distintivo.
-- **Target:** Se muestra en un color contrastante.
+Mobability es un addon para Final Fantasy XI que muestra alertas en tiempo real sobre las acciones de los mobs en combate, basándose en el modo de alerta seleccionado. Detecta eventos como cuando un mob starts casting un hechizo o readies un TP move, y muestra los avisos en una ventana flotante en la que los textos aparecen en colores. Esto permite identificar visualmente la información importante de cada alerta, y la configuración es completamente personalizable para adaptarse a las preferencias del usuario.
 
 Mobability funciona en dos modos de alerta:
 - **Solo tu objetivo actual:** Se generan alertas únicamente para el mob que tengas seleccionado.
