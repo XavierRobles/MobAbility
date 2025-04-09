@@ -24,6 +24,7 @@ Additional features include configurable options such as limiting the number of 
 ### Installation
 
 This addon is distributed as a complete package. Simply copy the Mobability folder into your Ashita addons directory.
+![config mobability](https://github.com/user-attachments/assets/3c649393-b5de-4935-9663-cfe3327d34ee)
 
 ### Usage
 
@@ -58,6 +59,7 @@ In the configuration window you can:
 - Test your settings with the "Test Alert" button.
 
 All settings are saved automatically when you close the configuration window.
+![Uploading config mobability.png…]()
 
 ### Additional Notes
 
@@ -129,7 +131,14 @@ Los ajustes se guardan automáticamente al cerrar la ventana de configuración.
 - **Servidor:**  
   Este addon está optimizado para servidores privados de FFXI, especialmente para Horizonxi ([https://horizonxi.com/](https://horizonxi.com/)). No ha sido probado en el entorno Retail.
 
+
 - **Licencia:**  
   Mobability se distribuye bajo la GNU General Public License v3.
+
+![spell](https://github.com/user-attachments/assets/49fcc87a-8f9a-4057-a11a-cad99cf0a1b0)![mortal ray](https://github.com/user-attachments/assets/fe77af8f-f7da-45b2-8d4a-f9da42896969)
+
+![spell chat](https://github.com/user-attachments/assets/5c68a668-f70d-47b2-9802-6d5d004ac7cd)
+
+
 
 ---
