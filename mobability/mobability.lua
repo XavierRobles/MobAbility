@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- Addon: mobability
 -- Autor: Waky
--- Versión: 1.0.0
+-- Versión: 1.0.1
 -- Descripción: Shows alerts for mob actions in combat based on your selected mode.
 --------------------------------------------------------------------------------
 
