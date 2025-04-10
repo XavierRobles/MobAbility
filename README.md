@@ -1,6 +1,6 @@
 # Mobability
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Author:** Waky  
 **License:** GNU General Public License v3  
 **Link:** [https://github.com/XavierRobles/MobAbility](https://github.com/XavierRobles/MobAbility)
