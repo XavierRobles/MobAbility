@@ -5,15 +5,15 @@
 -- Descripción: Shows alerts for mob actions in combat based on your selected mode.
 --------------------------------------------------------------------------------
 
-addon.name      = 'mobability';
-addon.author    = 'Waky';
-addon.version   = '1.0.0';
-addon.desc      = 'Mobability. Shows alerts for mob actions in combat based on your selected mode.';
-addon.link      = '';
+addon.name = 'mobability';
+addon.author = 'Waky';
+addon.version = '1.0.1';
+addon.desc = 'Mobability. Shows alerts for mob actions in combat based on your selected mode.';
+addon.link = '';
 
 require('common');
-local chat     = require('chat');
-local imgui    = require('imgui');
+local chat = require('chat');
+local imgui = require('imgui');
 local settings = require('settings');
 
 -- Tiempo máximo de vida de una alerta si la acción no termina (en segundos)
@@ -69,41 +69,41 @@ end
 ---------------------------------------------------------------
 -- Ajustes por defecto
 ---------------------------------------------------------------
-local default_settings = T{
-    position          = { x = 0.5, y = 0.25 },
-    font_scale        = 1.5,
-    show_alerts       = true,
-    force_show_alert  = false,
-    max_width         = 0,     -- 0 = auto resize
-    alert_mode        = 0,     -- 0: Only your current target  --   1: All party/ally mobs
-    alert_in_chat     = false,
+local default_settings = T {
+    position = { x = 0.5, y = 0.25 },
+    font_scale = 1.5,
+    show_alerts = true,
+    force_show_alert = false,
+    max_width = 0, -- 0 = auto resize
+    alert_mode = 0, -- 0: Only your current target  --   1: All party/ally mobs
+    alert_in_chat = false,
     show_spell_alerts = true,
-    show_tp_alerts    = true,
-    limit_alerts      = 5,         -- Límite de alertas (0 = ilimitado)
-    use_sound_spell   = false,     -- Usar sonido con Spell
-    use_sound_tp      = false,     -- Usar sonido con TP Move
+    show_tp_alerts = true,
+    limit_alerts = 5, -- Límite de alertas (0 = ilimitado)
+    use_sound_spell = false, -- Usar sonido con Spell
+    use_sound_tp = false, -- Usar sonido con TP Move
     alert_colors = {
-        mob           = { 1, 0, 0, 1 },          -- Color del nombre del mob
-        message       = { 1, 1, 1, 1 },          -- Color del texto fijo
-        action_spell  = { 0, 1, 1, 1 },          -- Color de la acción Spell
-        action_tp     = { 0.047, 1.0, 0, 1 },    -- Color de la acción TP move (#0CFF00FF)
-        target        = { 1, 1, 0, 1 }           -- Color del nombre del target
+        mob = { 1, 0, 0, 1 }, -- Color del nombre del mob
+        message = { 1, 1, 1, 1 }, -- Color del texto fijo
+        action_spell = { 0, 1, 1, 1 }, -- Color de la acción Spell
+        action_tp = { 0.047, 1.0, 0, 1 }, -- Color de la acción TP move (#0CFF00FF)
+        target = { 1, 1, 0, 1 }           -- Color del nombre del target
     }
 };
 
 ---------------------------------------------------------------
 -- Variables internas y globales
 ---------------------------------------------------------------
-flaggedEntities = flaggedEntities or T{};    -- Lista de mobs en combate (key = localIndex)
-mobMapping      = mobMapping or T{};         -- Mapping: nombre (normalizado) -> último localIndex
-mobTargets      = mobTargets or T{};         -- Nombre del receptor para cada mob
+flaggedEntities = flaggedEntities or T {};    -- Lista de mobs en combate (key = localIndex)
+mobMapping = mobMapping or T {};         -- Mapping: nombre (normalizado) -> último localIndex
+mobTargets = mobTargets or T {};         -- Nombre del receptor para cada mob
 
-local mobability = T{
-    settings        = settings.load(default_settings),
-    guiOpen         = { false },
-    alertQueue      = T{},
+local mobability = T {
+    settings = settings.load(default_settings),
+    guiOpen = { false },
+    alertQueue = T {},
     testAlertActive = false,
-    testAlertStart  = 0
+    testAlertStart = 0
 };
 
 ---------------------------------------------------------------
@@ -112,7 +112,9 @@ local mobability = T{
 local function GetEntity(idx)
     local entMgr = AshitaCore:GetMemoryManager():GetEntity();
     local name = entMgr:GetName(idx);
-    if not name or name == "" then return nil; end
+    if not name or name == "" then
+        return nil;
+    end
     local hp = 100;
     if entMgr.GetHPPercent then
         hp = entMgr:GetHPPercent(idx);
@@ -175,7 +177,9 @@ end
 
 local function GetCurrentTargetName()
     local idx = GetCurrentTargetIndex();
-    if not idx then return nil; end
+    if not idx then
+        return nil;
+    end
     return AshitaCore:GetMemoryManager():GetEntity():GetName(idx);
 end
 
@@ -202,7 +206,7 @@ local function showFloatingAlert(text, color, duration, mob, spell, alertType, e
         showType = mobability.settings.show_tp_alerts;
     end
     if not showType then
-        return;
+        return ;
     end
 
     -- Si en settings está habilitado el aviso en chat
@@ -212,23 +216,23 @@ local function showFloatingAlert(text, color, duration, mob, spell, alertType, e
 
     -- Si no hay que mostrar avisos flotantes, salir
     if not mobability.settings.show_alerts then
-        return;
+        return ;
     end
 
     local d = duration or 99999;
     local alert = {
-        text      = text,
-        color     = color or { 1.0, 1.0, 0.0, 1.0 },
-        expires   = os.clock() + d,
+        text = text,
+        color = color or { 1.0, 1.0, 0.0, 1.0 },
+        expires = os.clock() + d,
         startTime = os.clock(),
-        mob       = mob or nil,
-        spell     = spell or nil,
-        type      = alertType or "Spell"
+        mob = mob or nil,
+        spell = spell or nil,
+        type = alertType or "Spell"
     };
     if extra then
-        alert.mobColor   = extra.mobColor;
+        alert.mobColor = extra.mobColor;
         alert.spellColor = extra.spellColor;
-        alert.target     = extra.target;
+        alert.target = extra.target;
     end
 
     table.insert(mobability.alertQueue, alert);
@@ -239,7 +243,7 @@ end
 -- Manejo de party
 ---------------------------------------------------------------
 local function fetchPartyMembers()
-    local members = T{};
+    local members = T {};
     local party = AshitaCore:GetMemoryManager():GetParty();
     if party then
         for i = 0, 17 do
@@ -270,75 +274,75 @@ local function decodeActionPacket(e)
         end
         local value = ashita.bits.unpack_be(stream, 0, bits.pos, n)
         bits.pos = bits.pos + n
-        return value
+        return value;
     end
 
     -- Parsea una acción dentro de un target
     local function parseAction()
         local act = {}
-        act.Reaction      = read(5)
-        act.Animation     = read(12)
+        act.Reaction = read(5)
+        act.Animation = read(12)
         act.SpecialEffect = read(7)
-        act.Knockback     = read(3)
-        act.Param         = read(17)
-        act.Message       = read(10)
-        act.Flags         = read(31)
+        act.Knockback = read(3)
+        act.Param = read(17)
+        act.Message = read(10)
+        act.Flags = read(31)
         if read(1) == 1 then
             act.AdditionalEffect = {
-                Damage  = read(10),
-                Param   = read(17),
+                Damage = read(10),
+                Param = read(17),
                 Message = read(10)
             }
         end
         if read(1) == 1 then
             act.SpikesEffect = {
-                Damage  = read(10),
-                Param   = read(14),
+                Damage = read(10),
+                Param = read(14),
                 Message = read(10)
             }
         end
-        return act
+        return act;
     end
 
     -- Parsea un target (con ID y posibles acciones)
     local function parseTarget()
-        local target = T{}
+        local target = T {};
         target.Id = read(32)
         local actionCount = read(4)
         if actionCount > 0 then
-            local acts = T{}
+            local acts = T {};
             for i = 1, actionCount do
                 table.insert(acts, parseAction())
             end
-            target.Actions = acts
+            target.Actions = acts;
         end
-        return target
+        return target;
     end
 
     -- Comienza la construcción del paquete resultante
-    local packet = T{}
+    local packet = T {};
     packet.UserId = read(32)
     local targetCounter = read(6)
-    bits.pos = bits.pos + 4  -- saltamos padding
+    bits.pos = bits.pos + 4;  -- saltamos padding
     packet.Type = read(4)
-    
+
     if packet.Type == 8 or packet.Type == 9 then
-        packet.Param      = read(16)
+        packet.Param = read(16)
         packet.SpellGroup = read(16)
     else
         packet.Param = read(32)
     end
-    
-    packet.Recast  = read(32)
-    packet.Targets = T{}
-    
+
+    packet.Recast = read(32)
+    packet.Targets = T {};
+
     if targetCounter > 0 then
         for i = 1, targetCounter do
             table.insert(packet.Targets, parseTarget())
         end
     end
 
-    return packet
+    return packet;
 end
 
 
@@ -349,7 +353,7 @@ local function decodeMobUpdate(e)
     if e.id ~= 0x00E then
         return nil;
     end
-    local mobUpd = T{};
+    local mobUpd = T {};
     mobUpd.LocalIndex = struct.unpack('H', e.data, 0x08 + 1);
     mobUpd.NewClaimId = struct.unpack('I', e.data, 0x2C + 1);
     return mobUpd;
@@ -359,16 +363,19 @@ end
 -- Procesa la actualización de claim
 ---------------------------------------------------------------
 local function processMobUpdate(e)
-    if not e or not e.NewClaimId then return; end
-    -- Comprueba si es válido
+    if not e or not e.NewClaimId then
+        return ;
+    end
     local ent = GetEntity(e.LocalIndex);
-    if not ent then return; end
+    if not ent then
+        return ;
+    end
 
     local partyIDs = fetchPartyMembers();
     for _, pid in ipairs(partyIDs) do
         if pid == e.NewClaimId then
             flaggedEntities[e.LocalIndex] = 1;
-            break;
+            break ;
         end
     end
 end
@@ -377,8 +384,8 @@ end
 -- Resetea estados al cambiar de zona
 ---------------------------------------------------------------
 local function resetZoneState(e)
-    flaggedEntities         = T{};
-    mobability.alertQueue   = T{};
+    flaggedEntities = T {};
+    mobability.alertQueue = T {};
 end
 
 ---------------------------------------------------------------
@@ -391,7 +398,7 @@ local function refreshFlaggedEntities()
     for i = #mobability.alertQueue, 1, -1 do
         local alert = mobability.alertQueue[i];
         if alert.expires <= currentTime
-           or (alert.startTime and (currentTime - alert.startTime > ALERT_MAX_LIFETIME))
+                or (alert.startTime and (currentTime - alert.startTime > ALERT_MAX_LIFETIME))
         then
             table.remove(mobability.alertQueue, i);
         end
@@ -417,7 +424,7 @@ end
 local function HandleMobActionText(mobName, actionName, targetName, actionType, myName)
     -- Evita self-cast
     if normalize(mobName) == normalize(myName) then
-        return;
+        return ;
     end
 
     -- Chequeo de "alert_mode"
@@ -425,17 +432,17 @@ local function HandleMobActionText(mobName, actionName, targetName, actionType, 
         -- Modo 1: Todos los mobs que tengan odio con party
         local mappedIndex = mobMapping[normalize(mobName)];
         if not mappedIndex or not flaggedEntities[mappedIndex] then
-            return;
+            return ;
         end
     else
         -- Modo 0: Sólo el mob que sea tu target actual
         local targetIndex = GetCurrentTargetIndex();
         if not targetIndex or not flaggedEntities[targetIndex] then
-            return;
+            return ;
         end
         local mappedIndex = mobMapping[normalize(mobName)];
         if not mappedIndex or mappedIndex ~= targetIndex then
-            return;
+            return ;
         end
     end
 
@@ -450,18 +457,18 @@ local function HandleMobActionText(mobName, actionName, targetName, actionType, 
 
     -- Mostramos alerta
     showFloatingAlert(msg, nil, 99999, mobName, actionName, actionType, {
-        mobColor   = mobability.settings.alert_colors.mob,
+        mobColor = mobability.settings.alert_colors.mob,
         spellColor = (actionType == "TP")
-                     and mobability.settings.alert_colors.action_tp
-                     or  mobability.settings.alert_colors.action_spell,
-        target     = targetName
+                and mobability.settings.alert_colors.action_tp
+                or mobability.settings.alert_colors.action_spell,
+        target = targetName
     });
 end
 
 ashita.events.register('text_in', 'text_in_cb', function(e)
-    local line             = e.message;
-    local currentTargetName= GetCurrentTargetName() or "None";
-    local myName           = AshitaCore:GetMemoryManager():GetParty():GetMemberName(0);
+    local line = e.message;
+    local currentTargetName = GetCurrentTargetName() or "None";
+    local myName = AshitaCore:GetMemoryManager():GetParty():GetMemberName(0);
 
     -- Detectar Spell ("starts casting")
     do
@@ -509,18 +516,20 @@ ashita.events.register('packet_in', 'mobability_packet_in_cb', function(e)
     if e.id == 0x28 then
         -- Decodifica la acción
         local pkt = decodeActionPacket(e);
-        if not pkt then return; end
+        if not pkt then
+            return ;
+        end
 
         -- Comprueba si no es el propio jugador
         local myServerId = AshitaCore:GetMemoryManager():GetParty():GetMemberServerId(0);
         if pkt.UserId == myServerId then
-            return;
+            return ;
         end
 
         -- Verifica si es un mob válido
         local localIdx = GetValidMobIndexFromServerId(pkt.UserId);
         if localIdx == 0 then
-            return;
+            return ;
         end
 
         -- Actualiza el mobMapping con este mob
@@ -550,11 +559,11 @@ ashita.events.register('packet_in', 'mobability_packet_in_cb', function(e)
                             if alert.type == "Spell" then
                                 if normalize(alert.spell) == normalize(finalName) then
                                     alert.expires = os.clock();
-                                    break;
+                                    break ;
                                 end
                             elseif alert.type == "TP" then
                                 alert.expires = os.clock();
-                                break;
+                                break ;
                             end
                         end
                     end
@@ -563,18 +572,18 @@ ashita.events.register('packet_in', 'mobability_packet_in_cb', function(e)
         end
 
         -- Marca este mob como "flagged" si atacó o fue atacado por party
-        local entMgr  = AshitaCore:GetMemoryManager():GetEntity();
-        local partyIDs= fetchPartyMembers();
+        local entMgr = AshitaCore:GetMemoryManager():GetEntity();
+        local partyIDs = fetchPartyMembers();
         for _, tgt in ipairs(pkt.Targets) do
             if tgt and tgt.Id then
                 for _, pid in ipairs(partyIDs) do
                     if pid == tgt.Id then
                         flaggedEntities[localIdx] = 1;
-                        local mobName   = entMgr:GetName(localIdx) or "Unknown";
+                        local mobName = entMgr:GetName(localIdx) or "Unknown";
                         local targetIdx = ResolveLocalIndexFromId(tgt.Id);
-                        local targetName= entMgr:GetName(targetIdx) or "Unknown";
+                        local targetName = entMgr:GetName(targetIdx) or "Unknown";
                         mobTargets[normalize(mobName)] = targetName;
-                        break;
+                        break ;
                     end
                 end
             end
@@ -602,7 +611,7 @@ end);
 ashita.events.register('d3d_present', 'mobability_present_cb', function()
     local io = imgui.GetIO();
     if not io or not io.DisplaySize then
-        return;
+        return ;
     end
 
     local screen_w = io.DisplaySize[0] or io.DisplaySize.x;
@@ -634,11 +643,11 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
     imgui.SetNextWindowBgAlpha(0.0);
 
     local alert_flags = bit.bor(
-        ImGuiWindowFlags_AlwaysAutoResize,
-        ImGuiWindowFlags_NoTitleBar,
-        ImGuiWindowFlags_NoResize,
-        ImGuiWindowFlags_NoCollapse,
-        ImGuiWindowFlags_NoScrollbar
+            ImGuiWindowFlags_AlwaysAutoResize,
+            ImGuiWindowFlags_NoTitleBar,
+            ImGuiWindowFlags_NoResize,
+            ImGuiWindowFlags_NoCollapse,
+            ImGuiWindowFlags_NoScrollbar
     );
     if not mobability.guiOpen[1] then
         alert_flags = bit.bor(alert_flags, ImGuiWindowFlags_NoMove);
@@ -661,7 +670,7 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
         for _, alert in ipairs(mobability.alertQueue) do
             -- Respeta el "limit_alerts" si > 0
             if mobability.settings.limit_alerts > 0 and count >= mobability.settings.limit_alerts then
-                break;
+                break ;
             end
             count = count + 1;
 
@@ -707,21 +716,21 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
             imgui.Separator();
 
             do
-                local show_alerts = { mobability.settings.show_alerts };
-                if imgui.Checkbox("Show floating alerts", show_alerts) then
-                    mobability.settings.show_alerts = not mobability.settings.show_alerts;
+                local tmp_show_alerts = { mobability.settings.show_alerts };
+                if imgui.Checkbox("Show floating alerts", tmp_show_alerts) then
+                    mobability.settings.show_alerts = tmp_show_alerts[1];
                     settings.save();
                 end
 
-                local alert_in_chat = { mobability.settings.alert_in_chat };
-                if imgui.Checkbox("Show alerts in chat", alert_in_chat) then
-                    mobability.settings.alert_in_chat = not mobability.settings.alert_in_chat;
+                local tmp_alert_in_chat = { mobability.settings.alert_in_chat };
+                if imgui.Checkbox("Show alerts in chat", tmp_alert_in_chat) then
+                    mobability.settings.alert_in_chat = tmp_alert_in_chat[1];
                     settings.save();
                 end
 
-                local font_scale = { mobability.settings.font_scale };
-                if imgui.SliderFloat("Text size", font_scale, 0.5, 5.0) then
-                    mobability.settings.font_scale = font_scale[1];
+                local tmp_font_scale = { mobability.settings.font_scale };
+                if imgui.SliderFloat("Text size", tmp_font_scale, 0.5, 5.0) then
+                    mobability.settings.font_scale = tmp_font_scale[1];
                     settings.save();
                 end
             end
@@ -730,9 +739,9 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
             imgui.Text("SPELL ALERTS");
             imgui.Separator();
             do
-                local show_spell = { mobability.settings.show_spell_alerts };
-                if imgui.Checkbox("Show Spell Alerts", show_spell) then
-                    mobability.settings.show_spell_alerts = not mobability.settings.show_spell_alerts;
+                local tmp_show_spell = { mobability.settings.show_spell_alerts };
+                if imgui.Checkbox("Show Spell Alerts", tmp_show_spell) then
+                    mobability.settings.show_spell_alerts = tmp_show_spell[1];
                     settings.save();
                 end
             end
@@ -741,9 +750,9 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
             imgui.Text("TP MOVE ALERTS");
             imgui.Separator();
             do
-                local show_tp = { mobability.settings.show_tp_alerts };
-                if imgui.Checkbox("Show TP Move Alerts", show_tp) then
-                    mobability.settings.show_tp_alerts = not mobability.settings.show_tp_alerts;
+                local tmp_show_tp = { mobability.settings.show_tp_alerts };
+                if imgui.Checkbox("Show TP Move Alerts", tmp_show_tp) then
+                    mobability.settings.show_tp_alerts = tmp_show_tp[1];
                     settings.save();
                 end
             end
@@ -767,9 +776,9 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
             imgui.Text("ALERT LIMIT");
             imgui.Separator();
             do
-                local limit_alerts = { mobability.settings.limit_alerts };
-                if imgui.SliderInt("Alert Limit (0 = unlimited)", limit_alerts, 0, 10) then
-                    mobability.settings.limit_alerts = limit_alerts[1];
+                local tmp_limit_alerts = { mobability.settings.limit_alerts };
+                if imgui.SliderInt("Alert Limit (0 = unlimited)", tmp_limit_alerts, 0, 10) then
+                    mobability.settings.limit_alerts = tmp_limit_alerts[1];
                     settings.save();
                 end
             end
@@ -778,14 +787,14 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
             imgui.Text("SOUND SETTINGS");
             imgui.Separator();
             do
-                local use_sound_spell = { mobability.settings.use_sound_spell };
-                if imgui.Checkbox("Use sound with Spell", use_sound_spell) then
-                    mobability.settings.use_sound_spell = not mobability.settings.use_sound_spell;
+                local tmp_use_sound_spell = { mobability.settings.use_sound_spell };
+                if imgui.Checkbox("Use sound with Spell", tmp_use_sound_spell) then
+                    mobability.settings.use_sound_spell = tmp_use_sound_spell[1];
                     settings.save();
                 end
-                local use_sound_tp = { mobability.settings.use_sound_tp };
-                if imgui.Checkbox("Use sound with TP Move", use_sound_tp) then
-                    mobability.settings.use_sound_tp = not mobability.settings.use_sound_tp;
+                local tmp_use_sound_tp = { mobability.settings.use_sound_tp };
+                if imgui.Checkbox("Use sound with TP Move", tmp_use_sound_tp) then
+                    mobability.settings.use_sound_tp = tmp_use_sound_tp[1];
                     settings.save();
                 end
             end
@@ -794,46 +803,46 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
             imgui.Text("ALERT COLORS");
             imgui.Separator();
             do
-                local temp_mob = { unpack(mobability.settings.alert_colors.mob) };
-                if imgui.ColorEdit4("Mob Color", temp_mob) then
-                    mobability.settings.alert_colors.mob = temp_mob;
+                local tmp_mob = { unpack(mobability.settings.alert_colors.mob) };
+                if imgui.ColorEdit4("Mob Color", tmp_mob) then
+                    mobability.settings.alert_colors.mob = tmp_mob;
                     settings.save();
                 end
 
-                local temp_message = { unpack(mobability.settings.alert_colors.message) };
-                if imgui.ColorEdit4("Message Color", temp_message) then
-                    mobability.settings.alert_colors.message = temp_message;
+                local tmp_message = { unpack(mobability.settings.alert_colors.message) };
+                if imgui.ColorEdit4("Message Color", tmp_message) then
+                    mobability.settings.alert_colors.message = tmp_message;
                     settings.save();
                 end
 
-                local temp_action_spell = { unpack(mobability.settings.alert_colors.action_spell) };
-                if imgui.ColorEdit4("Spell Action Color", temp_action_spell) then
-                    mobability.settings.alert_colors.action_spell = temp_action_spell;
+                local tmp_action_spell = { unpack(mobability.settings.alert_colors.action_spell) };
+                if imgui.ColorEdit4("Spell Action Color", tmp_action_spell) then
+                    mobability.settings.alert_colors.action_spell = tmp_action_spell;
                     settings.save();
                 end
 
-                local temp_action_tp = { unpack(mobability.settings.alert_colors.action_tp) };
-                if imgui.ColorEdit4("TP Move Color", temp_action_tp) then
-                    mobability.settings.alert_colors.action_tp = temp_action_tp;
+                local tmp_action_tp = { unpack(mobability.settings.alert_colors.action_tp) };
+                if imgui.ColorEdit4("TP Move Color", tmp_action_tp) then
+                    mobability.settings.alert_colors.action_tp = tmp_action_tp;
                     settings.save();
                 end
 
-                local temp_target = { unpack(mobability.settings.alert_colors.target) };
-                if imgui.ColorEdit4("Target Color", temp_target) then
-                    mobability.settings.alert_colors.target = temp_target;
+                local tmp_target = { unpack(mobability.settings.alert_colors.target) };
+                if imgui.ColorEdit4("Target Color", tmp_target) then
+                    mobability.settings.alert_colors.target = tmp_target;
                     settings.save();
                 end
             end
 
             imgui.Spacing();
             if imgui.Button("Test Alert") then
-                showFloatingAlert("Test alert: Config mode activated", {0,1,1,1}, 10, "Test", "Test", "Spell", {
-                    mobColor   = mobability.settings.alert_colors.mob,
+                showFloatingAlert("Test alert: Config mode activated", { 0, 1, 1, 1 }, 10, "Test", "Test", "Spell", {
+                    mobColor = mobability.settings.alert_colors.mob,
                     spellColor = mobability.settings.alert_colors.action_spell,
-                    target     = "TestTarget"
+                    target = "TestTarget"
                 });
                 mobability.testAlertActive = true;
-                mobability.testAlertStart  = os.clock();
+                mobability.testAlertStart = os.clock();
             end
         end
         imgui.End();
@@ -845,7 +854,9 @@ end);
 ---------------------------------------------------------------
 ashita.events.register('command', 'mobability_command_cb', function(e)
     local args = e.command:args();
-    if #args == 0 then return; end
+    if #args == 0 then
+        return ;
+    end
     if args[1] == '/mobability' or args[1] == '/mb' then
         e.blocked = true;
         mobability.guiOpen[1] = not mobability.guiOpen[1];
@@ -861,13 +872,13 @@ end);
 --    e.blocked = true;
 --    local entMgr = AshitaCore:GetMemoryManager():GetEntity();
 --   print("=== Party Hate List ===");
- --   for index, _ in pairs(flaggedEntities) do
- --       local mobName = entMgr:GetName(index) or "Unknown";
- --       local serverId = entMgr:GetServerId(index) or 0;
- --       print(string.format("Index: %d | Name: %s | ServerID: %d", index, mobName, serverId));
- --   end
+--   for index, _ in pairs(flaggedEntities) do
+--       local mobName = entMgr:GetName(index) or "Unknown";
+--       local serverId = entMgr:GetServerId(index) or 0;
+--       print(string.format("Index: %d | Name: %s | ServerID: %d", index, mobName, serverId));
+--   end
 --    print("=== End of list ===");
---end);
+-- end);
 
 --------------------------------------------------------------------------------
 -- End of addon
