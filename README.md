@@ -190,10 +190,10 @@ Con estos pasos, el addon se cargará y estará listo para usar.
 <table>
   <tr>
     <td>
-      <img src="https://github.com/user-attachments/assets/49fcc87a-8f9a-4057-a11a-cad99cf0a1b0" alt="spell" width="500"/>
+      <img src="https://github.com/user-attachments/assets/e5b261e8-8105-46f1-812f-ac18a28bf8da" alt="spell" width="500"/>
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/fe77af8f-f7da-45b2-8d4a-f9da42896969" alt="mortal ray" width="500"/>
+      <img src="https://github.com/user-attachments/assets/366b1aa4-43c1-42c7-b42b-1e2d99db1463" alt="mortal ray" width="500"/>
     </td>
   </tr>
   <tr>
