@@ -1,9 +1,43 @@
 # Mobability
 
-**Version:** 1.0.1  
+**Version:** 1.0.2  
 **Author:** Waky  
 **License:** GNU General Public License v3  
 **Link:** [https://github.com/XavierRobles/MobAbility](https://github.com/XavierRobles/MobAbility)
+
+---
+
+## 📌 Changelog
+
+### v1.0.2 (English)
+
+- Fixed an issue where names were not displayed correctly in certain cases.
+- Fixed an issue where mob self-targeted actions did not display the name properly.
+- Names now display correctly even when the action's target is not part of the party or alliance.
+- Fixed an issue where pet names were not displayed when they received an action.
+- Added the summoner's name to the pet information.
+- Added alerts for mobs using two-hour (2H) abilities.
+- Added configurable background for alerts in the options menu.
+- Fixed an issue where player-defined settings were not being saved correctly.
+- Documented the code for better readability and maintenance.
+
+---
+
+### v1.0.2 (Español)
+
+- Se corrigió un error donde los nombres no se mostraban correctamente en ciertos casos.
+- Se corrigió un error al mostrar acciones que un mob se hacía a sí mismo.
+- Ahora los nombres se muestran correctamente incluso si el objetivo de la acción no está en la party o alianza.
+- Se corrigió un error donde no se mostraban los nombres de los pets al recibir una acción.
+- Se añadió el nombre del invocador en la información del pet.
+- Se añadieron alertas para detectar habilidades 2H de los mobs.
+- Se añadió un fondo configurable en las alertas desde el menú de opciones.
+- Se corrigió un problema donde no se guardaban correctamente los ajustes definidos por el jugador.
+- Se documentó el código para mejorar su legibilidad y mantenimiento.
+
+---
+
+### v1.0.1
 
 ---
 
