@@ -901,12 +901,6 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
     -- Ventana de Config
     if mobability.guiOpen[1] then
         if imgui.Begin('Mobability Config', mobability.guiOpen, ImGuiWindowFlags_AlwaysAutoResize) then
-
-            imgui.Text("2H ALERTS DETECTION:")
-            imgui.Text("    - Por lines en chat ('Mob uses <2H> on <Target>'), se filtra con knownTwoHourNames.")
-            imgui.Text("    - Por packet_in con Type=6/11 + ID de ability en knownTwoHourNames.")
-            imgui.Spacing()
-
             imgui.Text("GENERAL SETTINGS")
             imgui.Separator()
             do
@@ -947,11 +941,11 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
             -- TP/2H Move Alerts
             --------------------------------------------------------------------
             imgui.Spacing()
-            imgui.Text("TP/2H ALERTS")
+            imgui.Text("TP ALERTS")
             imgui.Separator()
             do
                 local tmp_show_tp = { mobability.settings.show_tp_alerts }
-                if imgui.Checkbox("Show TP/2H Alerts", tmp_show_tp) then
+                if imgui.Checkbox("Show TP Alerts", tmp_show_tp) then
                     mobability.settings.show_tp_alerts = tmp_show_tp[1]
                     SaveConfig()
                 end
@@ -1002,7 +996,7 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
                     SaveConfig()
                 end
                 local tmp_use_sound_tp = { mobability.settings.use_sound_tp }
-                if imgui.Checkbox("Use sound with TP/2H", tmp_use_sound_tp) then
+                if imgui.Checkbox("Use sound with TP", tmp_use_sound_tp) then
                     mobability.settings.use_sound_tp = tmp_use_sound_tp[1]
                     SaveConfig()
                 end
