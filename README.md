@@ -4,6 +4,23 @@
 **Author:** Waky  
 **License:** GNU General Public License v3  
 **Link:** [https://github.com/XavierRobles/MobAbility](https://github.com/XavierRobles/MobAbility)
+---
+## ⚠️ $${\color{orange}IMPORTANT}$$
+
+> This addon $${\color{red}has\space NOT\space been\space approved}$$ by $${\color{teal}HorizonXI}$$ for use on their server.  
+> **Its use is the sole responsibility of the user, who must respect the rules of the server they play on.**
+---
+> Este addon $${\color{red}NO\space ha\space sido\space aprobado}$$ por $${\color{teal}HorizonXI}$$ para su uso en su servidor.  
+> **Su uso queda bajo la responsabilidad del usuario, quien debe respetar las normas del servidor donde juegue.**
+
+---
+> ## 📢 Notice
+> 
+> This addon is completely transparent in its operation: it acts only on the client, processing information that is already displayed in the game chat. It does not modify any game files, does not send data to the server, and consumes minimal resources, operating solely with the local data available.
+---
+> 
+> Este addon es completamente transparente en su funcionamiento: actúa solo en el cliente, procesando la información que ya muestra el chat del juego. No modifica ningún archivo del juego, no envía datos al servidor y consume recursos mínimos, operando únicamente con los datos locales disponibles.
+
 
 ---
 
@@ -59,7 +76,7 @@ Additional features include configurable options such as limiting the number of 
 
 1. **Step 1:**  
    Copy the `Mobability` folder into the Ashita addons directory or into the game client folder. For example:  
-   `HorizonXI\Game\addons`
+   `\Game\addons`
 
 2. **Step 2:**  
    - **Automatic Loading:**  
@@ -126,7 +143,7 @@ In game, type `/mb` or `/mobability` in the chat to open the Mobability configur
   Mobability has been designed for Ashita, aiming to enhance your combat experience in Final Fantasy XI with clear and configurable alerts.
 
 - **Server:**  
-  This addon is optimized for private servers of FFXI, and is especially designed for Horizonxi ([https://horizonxi.com/](https://horizonxi.com/)). It has not been tested on the Retail version.
+  his addon is optimized for private FFXI servers. It has not been tested on the Retail version.
 
 - **License:**  
   Mobability is distributed under the GNU General Public License v3.
@@ -151,7 +168,7 @@ Entre sus características se incluyen opciones configurables para limitar el n�
 
 1. **Paso 1:**  
    Copia la carpeta `Mobability` en el directorio de addons de Ashita o en la carpeta del cliente del juego. Por ejemplo:  
-   `HorizonXI\Game\addons`
+   `\Game\addons`
 
 2. **Paso 2:**  
    - **Carga automática:**  
@@ -215,7 +232,7 @@ Con estos pasos, el addon se cargará y estará listo para usar.
   Mobability ha sido diseñado para funcionar con Ashita y mejorar la experiencia de combate en Final Fantasy XI mediante alertas claras y configurables.
 
 - **Servidor:**  
-  Este addon está optimizado para servidores privados de FFXI, especialmente para Horizonxi ([https://horizonxi.com/](https://horizonxi.com/)). No ha sido probado en el entorno Retail.
+  Este addon está optimizado para servidores privados de FFXI. No ha sido probado en la versión Retail.
 
 
 - **Licencia:**  
