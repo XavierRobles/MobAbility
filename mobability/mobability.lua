@@ -13,9 +13,9 @@
 
 addon.name = 'mobability'
 addon.author = 'Waky'
-addon.version = '1.0.2'
+addon.version = '1.0.3'
 addon.desc = 'Mobability. Shows alerts for mob actions in combat based on your selected mode.'
-addon.link = ''
+addon.link = 'https://github.com/XavierRobles/MobAbility'
 
 --------------------------------------------------------------------------------
 -- Librerías / requires
@@ -37,7 +37,6 @@ local default_settings = T {
     position = { x = 0.5, y = 0.25 }, -- Dónde aparecerá la ventana de alertas
     font_scale = 1.5,
     show_alerts = true,
-    force_show_alert = false,
     max_width = 0, -- 0 => auto-resize
     alert_mode = 0, -- 0 => sólo alertas de tu current target; 1 => todos los mobs en hate con la party
     alert_in_chat = false,
@@ -46,6 +45,7 @@ local default_settings = T {
     limit_alerts = 5, -- 0 => ilimitado
     use_sound_spell = true, -- Reproducir sonido en spells
     use_sound_tp = true, -- Reproducir sonido en TP/2H
+    volume_level = 'med', -- 'low' | 'med' | 'high' (selecciona el .wav pre-amplificado)
     alert_colors = {
         mob = { 1, 0, 0, 1 }, -- Color del nombre del mob
         message = { 1, 1, 1, 1 }, -- Color del mensaje "readies/casting"
@@ -92,7 +92,6 @@ local knownTwoHourNames = T {
     ["Familiar"] = true,
     ["Eagle Eye Shot"] = true,
     ["Mijin Gakure"] = true,
-    ["Charm"] = true,
 }
 
 --------------------------------------------------------------------------------
@@ -270,10 +269,11 @@ end
 -- Reproducir sonidos
 --------------------------------------------------------------------------------
 local function playAlertSound(alertType)
+    local lvl = mobability.settings.volume_level or 'med'
     if alertType == "Spell" and mobability.settings.use_sound_spell then
-        ashita.misc.play_sound(addon.path .. 'sound/spell_alert.wav')
+        ashita.misc.play_sound(addon.path .. 'sound/spell_alert_' .. lvl .. '.wav')
     elseif (alertType == "TP" or alertType == "2H") and mobability.settings.use_sound_tp then
-        ashita.misc.play_sound(addon.path .. 'sound/tp_alert.wav')
+        ashita.misc.play_sound(addon.path .. 'sound/tp_alert_' .. lvl .. '.wav')
     end
 end
 
@@ -322,8 +322,14 @@ end
 --------------------------------------------------------------------------------
 -- refreshFlaggedEntities => limpia alertas viejas y mobs sin odio
 --------------------------------------------------------------------------------
+local lastRefresh = 0
 local function refreshFlaggedEntities()
     local now = os.clock()
+    -- Throttle: no tiene sentido recorrer estado en cada paquete entrante.
+    if now - lastRefresh < 1.0 then
+        return
+    end
+    lastRefresh = now
 
     -- Elimina alertas expiradas
     for i = #mobability.alertQueue, 1, -1 do
@@ -344,6 +350,15 @@ local function refreshFlaggedEntities()
             flaggedEntities[idx] = nil
         end
     end
+
+    -- Limpia mappings cuyo mob ya no existe (evita crecimiento sin tope).
+    for normName, idx in pairs(mobMapping) do
+        local ent = GetEntity(idx)
+        if (not ent) or ent.HPPercent <= 0 or normalize(ent.Name) ~= normName then
+            mobMapping[normName] = nil
+            mobTargets[normName] = nil
+        end
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -351,6 +366,8 @@ end
 --------------------------------------------------------------------------------
 local function resetZoneState(e)
     flaggedEntities = T {}
+    mobMapping = T {}
+    mobTargets = T {}
     mobability.alertQueue = T {}
 end
 
@@ -412,43 +429,28 @@ local function decodeActionPacket(e)
 
     if tCount > 0 then
         for i = 1, tCount do
-            local function parseAction()
-                local act = {}
-                act.Reaction = read(5)
-                act.Animation = read(12)
-                act.SpecialEffect = read(7)
-                act.Knockback = read(3)
-                act.Param = read(17)
-                act.Message = read(10)
-                act.Flags = read(31)
-                local hasAdd = (read(1) == 1)
-                if hasAdd then
-                    act.AdditionalEffect = {
-                        Damage = read(10),
-                        Param = read(17),
-                        Message = read(10)
-                    }
+            -- Avanza el puntero de bits sin construir tablas: los campos no se leen downstream.
+            local function skipAction()
+                read(5)   -- Reaction
+                read(12)  -- Animation
+                read(7)   -- SpecialEffect
+                read(3)   -- Knockback
+                read(17)  -- Param
+                read(10)  -- Message
+                read(31)  -- Flags
+                if read(1) == 1 then
+                    read(10); read(17); read(10) -- AdditionalEffect
                 end
-                local hasSpikes = (read(1) == 1)
-                if hasSpikes then
-                    act.SpikesEffect = {
-                        Damage = read(10),
-                        Param = read(14),
-                        Message = read(10)
-                    }
+                if read(1) == 1 then
+                    read(10); read(14); read(10) -- SpikesEffect
                 end
-                return act
             end
             local function parseTarget()
                 local tg = T {}
                 tg.Id = read(32)
                 local acCt = read(4)
-                if acCt > 0 then
-                    local acts = T {}
-                    for j = 1, acCt do
-                        table.insert(acts, parseAction())
-                    end
-                    tg.Actions = acts
+                for j = 1, acCt do
+                    skipAction()
                 end
                 return tg
             end
@@ -534,68 +536,78 @@ local function HandleMobTwoHourText(mobName, abilityName, targetName, myName)
     })
 end
 
-_G.HandleMobActionText = HandleMobActionText
-
 --------------------------------------------------------------------------------
 -- EVENTO text_in => Detecta los mensajes de chat
 --------------------------------------------------------------------------------
 ashita.events.register('text_in', 'text_in_cb', function(e)
     local line = e.message
+    -- Pre-filtro: la gran mayoría de líneas de chat no son acciones de mob.
+    -- find con plain=true es mucho más barato que correr 3 patrones por línea.
+    if not (line:find(' starts casting ', 1, true)
+            or line:find(' readies ', 1, true)
+            or line:find(' uses ', 1, true)) then
+        return
+    end
     local currentTargetName = GetCurrentTargetName() or "None"
     local myName = AshitaCore:GetMemoryManager():GetParty():GetMemberName(0)
 
     -- Spells => "mob starts casting X on Y"
     do
-        local mob_name, spell_name, targetName = line:match('^(.-) starts casting ([%a%s%-]+) on ([%a%s%-]+)%.')
+        local mob_name, spell_name, targetName = line:match('^(.-) starts casting ([%w%s%-\']+) on ([%w%s%-\']+)%.')
         if not mob_name then
-            mob_name, spell_name = line:match('^(.-) starts casting ([%a%s%-]+)%.')
+            mob_name, spell_name = line:match('^(.-) starts casting ([%w%s%-\']+)%.')
             targetName = currentTargetName
         end
         if mob_name and spell_name then
             mob_name = mob_name:gsub('^The%s+', '')
-            if mobTargets[normalize(mob_name)] then
-                targetName = mobTargets[normalize(mob_name)]
+            local nm = normalize(mob_name)
+            if mobTargets[nm] then
+                targetName = mobTargets[nm]
             end
             HandleMobActionText(mob_name, spell_name, targetName, "Spell", myName)
+            return
         end
     end
 
     -- TP => "mob readies X on Y"
     do
-        local mob_tp, tp_move, targetNameTP = line:match('^(.-) readies ([%a%s%-]+) on ([%a%s%-]+)%.')
+        local mob_tp, tp_move, targetNameTP = line:match('^(.-) readies ([%w%s%-\']+) on ([%w%s%-\']+)%.')
         if not mob_tp then
-            mob_tp, tp_move = line:match('^(.-) readies ([%a%s%-]+)%.')
+            mob_tp, tp_move = line:match('^(.-) readies ([%w%s%-\']+)%.')
             targetNameTP = currentTargetName
         end
         if mob_tp and tp_move then
             mob_tp = mob_tp:gsub('^The%s+', '')
-            if mobTargets[normalize(mob_tp)] then
-                targetNameTP = mobTargets[normalize(mob_tp)]
+            local nm = normalize(mob_tp)
+            if mobTargets[nm] then
+                targetNameTP = mobTargets[nm]
             end
             HandleMobActionText(mob_tp, tp_move, targetNameTP, "TP", myName)
+            return
         end
     end
 
     -- 2H => "Mob uses <2H> on <target>" => solo si <2H> está en knownTwoHourNames
     do
-        local mob_2h, ability_2h, target_2h = line:match('^(.-) uses ([%a%s%-]+) on ([%a%s%-]+)%.')
+        local mob_2h, ability_2h, target_2h = line:match('^(.-) uses ([%w%s%-\']+) on ([%w%s%-\']+)%.')
         if mob_2h and ability_2h and target_2h then
             mob_2h = mob_2h:gsub('^The%s+', '')
             if knownTwoHourNames[ability_2h] then
-                if mobTargets[normalize(mob_2h)] then
-                    target_2h = mobTargets[normalize(mob_2h)]
+                local nm = normalize(mob_2h)
+                if mobTargets[nm] then
+                    target_2h = mobTargets[nm]
                 end
-                HandleMobTwoHourText(mob_2h, ability_2h, target_2_2h or target_2h, myName)
+                HandleMobTwoHourText(mob_2h, ability_2h, target_2h, myName)
             end
-        else
-            -- Sin "on <target>"
-            local mob_2h2, ability_2h2 = line:match('^(.-) uses ([%a%s%-]+)%.')
-            if mob_2h2 and ability_2h2 then
-                mob_2h2 = mob_2h2:gsub('^The%s+', '')
-                if knownTwoHourNames[ability_2h2] then
-                    local fallbackTarget = mobTargets[normalize(mob_2h2)] or mob_2h2
-                    HandleMobTwoHourText(mob_2h2, ability_2h2, fallbackTarget, myName)
-                end
+            return
+        end
+        -- Sin "on <target>"
+        local mob_2h2, ability_2h2 = line:match('^(.-) uses ([%w%s%-\']+)%.')
+        if mob_2h2 and ability_2h2 then
+            mob_2h2 = mob_2h2:gsub('^The%s+', '')
+            if knownTwoHourNames[ability_2h2] then
+                local fallbackTarget = mobTargets[normalize(mob_2h2)] or mob_2h2
+                HandleMobTwoHourText(mob_2h2, ability_2h2, fallbackTarget, myName)
             end
         end
     end
@@ -796,14 +808,13 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
     end
 
     if mobability.testAlertActive and os.clock() >= (mobability.testAlertStart + 10) then
-        mobability.settings.force_show_alert = false
         mobability.testAlertActive = false
-        SaveConfig()
     end
 
     -- Elimina alertas expiradas
+    local now = os.clock()
     for i = #mobability.alertQueue, 1, -1 do
-        if mobability.alertQueue[i].expires <= os.clock() then
+        if mobability.alertQueue[i].expires <= now then
             table.remove(mobability.alertQueue, i)
         end
     end
@@ -835,11 +846,16 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
 
         imgui.SetWindowFontScale(mobability.settings.font_scale)
 
-        -- Guardar posición
+        -- Guardar posición sólo si cambió (evita escritura a disco por frame).
         local posx, posy = imgui.GetWindowPos()
-        mobability.settings.position.x = posx / screen_w
-        mobability.settings.position.y = posy / screen_h
-        SaveConfig()
+        local newX = posx / screen_w
+        local newY = posy / screen_h
+        if math.abs(newX - mobability.settings.position.x) > 0.0001
+                or math.abs(newY - mobability.settings.position.y) > 0.0001 then
+            mobability.settings.position.x = newX
+            mobability.settings.position.y = newY
+            SaveConfig()
+        end
 
         -- Render de las alertas
         local count = 0
@@ -876,8 +892,6 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
 
                 -- “ on X ”
                 if alert.target then
-                    local isSelf = (alert.target == alert.mob)
-                    -- De momento mostramos siempre “ on X ”
                     imgui.SameLine(0, 0)
                     imgui.TextColored(mobability.settings.alert_colors.message, " on ")
                     imgui.SameLine(0, 0)
@@ -895,8 +909,11 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
     imgui.End()
     imgui.PopStyleColor()
 
-    local style = imgui.GetStyle()
-    style.WindowBorderSize = 0
+    -- Estilo global sólo una vez (ImGui lo mantiene entre frames).
+    if not mobability.styleInit then
+        imgui.GetStyle().WindowBorderSize = 0
+        mobability.styleInit = true
+    end
 
     -- Ventana de Config
     if mobability.guiOpen[1] then
@@ -998,6 +1015,22 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
                 local tmp_use_sound_tp = { mobability.settings.use_sound_tp }
                 if imgui.Checkbox("Use sound with TP", tmp_use_sound_tp) then
                     mobability.settings.use_sound_tp = tmp_use_sound_tp[1]
+                    SaveConfig()
+                end
+
+                imgui.Text("Volume")
+                if imgui.RadioButton("Low", mobability.settings.volume_level == 'low') then
+                    mobability.settings.volume_level = 'low'
+                    SaveConfig()
+                end
+                imgui.SameLine()
+                if imgui.RadioButton("Med", mobability.settings.volume_level == 'med') then
+                    mobability.settings.volume_level = 'med'
+                    SaveConfig()
+                end
+                imgui.SameLine()
+                if imgui.RadioButton("High", mobability.settings.volume_level == 'high') then
+                    mobability.settings.volume_level = 'high'
                     SaveConfig()
                 end
             end

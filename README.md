@@ -1,6 +1,6 @@
 # Mobability
 
-**Version:** 1.0.2  
+**Version:** 1.0.3  
 **Author:** Waky  
 **License:** GNU General Public License v3  
 **Link:** [https://github.com/XavierRobles/MobAbility](https://github.com/XavierRobles/MobAbility)
@@ -25,6 +25,28 @@
 ---
 
 ## 📌 Changelog
+
+### v1.0.3 (English)
+
+- Added 3-level volume control (**Low / Med / High**) for spell and TP alerts, switchable from the configuration window.
+- Volume changes apply instantly, with no need to reload the addon.
+- Performance improvements: reduced per-frame work and per-packet allocations.
+- Memory cleanup for long sessions (mob mapping is now released on death or zone change).
+- Fixed apostrophes in mob and target names not being parsed correctly.
+- Removed *Charm* from the 2H ability list (it is not actually a 2H).
+
+---
+
+### v1.0.3 (Español)
+
+- Se añadió control de volumen en 3 niveles (**Low / Med / High**) para las alertas de hechizos y TP, configurable desde la ventana de opciones.
+- El cambio de volumen se aplica al instante, sin necesidad de recargar el addon.
+- Mejoras de rendimiento: menos trabajo por frame y menos asignaciones por paquete.
+- Limpieza de memoria en sesiones largas (los mapeos de mobs se liberan al morir o al cambiar de zona).
+- Se corrigió el parseo de apóstrofos en los nombres de mobs y objetivos.
+- Se eliminó *Charm* de la lista de habilidades 2H (no es realmente una 2H).
+
+---
 
 ### v1.0.2 (English)
 
