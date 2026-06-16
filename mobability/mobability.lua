@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 -- Addon: mobability
 -- Autor: Waky
--- Versión: 1.0.2
+-- Versión: 1.0.4
 -- Descripción:
 --   Muestra alertas para:
 --     • Spells ( "Mob starts casting X on Y" )
@@ -13,7 +13,7 @@
 
 addon.name = 'mobability'
 addon.author = 'Waky'
-addon.version = '1.0.3'
+addon.version = '1.0.4'
 addon.desc = 'Mobability. Shows alerts for mob actions in combat based on your selected mode.'
 addon.link = 'https://github.com/XavierRobles/MobAbility'
 
@@ -72,6 +72,8 @@ end
 flaggedEntities = flaggedEntities or T {} -- Mobs en odio (hate) hacia la party
 mobMapping = mobMapping or T {} -- Mapping: mob_name_normalized => localIndex
 mobTargets = mobTargets or T {} -- Mapping: mob_name => nombre del target
+mobIndicesByName = mobIndicesByName or T {} -- Mapping: mob_name_normalized => set de localIndex
+mobTargetsByIndex = mobTargetsByIndex or T {} -- Mapping: localIndex => nombre del target
 
 --------------------------------------------------------------------------------
 -- Tabla con nombres de “2H” / SP abilities que reconocemos
@@ -101,6 +103,7 @@ local mobability = T {
     settings = userSettings,
     guiOpen = { false },
     alertQueue = T {},
+    recentAlerts = T {},
     testAlertActive = false,
     testAlertStart = 0,
     debug = false,
@@ -265,11 +268,70 @@ local function GetCurrentTargetName()
     return ent:GetName(cIdx)
 end
 
+-- Registra todas las entidades vistas con un nombre, conservando el mapping antiguo como fallback.
+local function RecordMobIndex(mobName, localIdx)
+    local normName = normalize(mobName)
+    mobMapping[normName] = localIdx
+    mobIndicesByName[normName] = mobIndicesByName[normName] or T {}
+    mobIndicesByName[normName][localIdx] = true
+end
+
+-- Resuelve el mob más probable cuando el chat sólo proporciona su nombre.
+local function ResolveMappedMobIndex(mobName, targetName)
+    local normName = normalize(mobName)
+    local candidates = mobIndicesByName[normName]
+    if mobability.settings.alert_mode == 0 then
+        local currentIdx = GetCurrentTargetIndex()
+        if currentIdx and candidates and candidates[currentIdx] then
+            return currentIdx
+        end
+        return nil
+    end
+
+    if candidates then
+        local normTarget = normalize(targetName)
+        if normTarget then
+            local targetMatch = nil
+            for idx, _ in pairs(candidates) do
+                if flaggedEntities[idx] and normalize(mobTargetsByIndex[idx]) == normTarget then
+                    if targetMatch then
+                        return nil
+                    end
+                    targetMatch = idx
+                end
+            end
+            if targetMatch then
+                return targetMatch
+            end
+        end
+
+        local flaggedMatch = nil
+        for idx, _ in pairs(candidates) do
+            if flaggedEntities[idx] then
+                if flaggedMatch then
+                    return nil
+                end
+                flaggedMatch = idx
+            end
+        end
+        return flaggedMatch
+    end
+    return mobMapping[normName]
+end
+
+local function ResolveMappedTarget(mobName, targetName)
+    local mappedIndex = ResolveMappedMobIndex(mobName, targetName)
+    return (mappedIndex and mobTargetsByIndex[mappedIndex]) or mobTargets[normalize(mobName)]
+end
+
 --------------------------------------------------------------------------------
 -- Reproducir sonidos
 --------------------------------------------------------------------------------
 local function playAlertSound(alertType)
     local lvl = mobability.settings.volume_level or 'med'
+    if lvl ~= 'low' and lvl ~= 'med' and lvl ~= 'high' then
+        lvl = 'med'
+    end
     if alertType == "Spell" and mobability.settings.use_sound_spell then
         ashita.misc.play_sound(addon.path .. 'sound/spell_alert_' .. lvl .. '.wav')
     elseif (alertType == "TP" or alertType == "2H") and mobability.settings.use_sound_tp then
@@ -291,10 +353,21 @@ local function showFloatingAlert(text, color, duration, mob, spell, alertType, e
         return
     end
 
+    local now = os.clock()
+    local identity = (extra and extra.mobIndex) or normalize(mob) or "unknown"
+    local actionIdentity = (alertType == "TP") and "" or (normalize(spell) or "unknown")
+    local dedupeKey = tostring(identity) .. '\0' .. alertType .. '\0' .. actionIdentity
+    local previous = mobability.recentAlerts[dedupeKey]
+    if previous and (now - previous) < 1.0 then
+        return
+    end
+    mobability.recentAlerts[dedupeKey] = now
+
     -- Si en settings está habilitado el aviso en chat
     if mobability.settings.alert_in_chat then
         print(chat.header('MobAbility'):append(chat.message(text)))
     end
+    playAlertSound(alertType)
     if not mobability.settings.show_alerts then
         return
     end
@@ -303,20 +376,18 @@ local function showFloatingAlert(text, color, duration, mob, spell, alertType, e
     local alert = {
         text = text,
         color = color or { 1.0, 1.0, 0.0, 1.0 },
-        expires = os.clock() + d,
-        startTime = os.clock(),
+        expires = now + d,
+        startTime = now,
         mob = mob,
         spell = spell,
         type = alertType
     }
     if extra then
-        alert.mobColor = extra.mobColor
-        alert.spellColor = extra.spellColor
         alert.target = extra.target
+        alert.mobIndex = extra.mobIndex
     end
 
     table.insert(mobability.alertQueue, alert)
-    playAlertSound(alert.type)
 end
 
 --------------------------------------------------------------------------------
@@ -359,6 +430,25 @@ local function refreshFlaggedEntities()
             mobTargets[normName] = nil
         end
     end
+
+    for normName, indices in pairs(mobIndicesByName) do
+        for idx, _ in pairs(indices) do
+            local ent = GetEntity(idx)
+            if (not ent) or ent.HPPercent <= 0 or normalize(ent.Name) ~= normName then
+                indices[idx] = nil
+                mobTargetsByIndex[idx] = nil
+            end
+        end
+        if next(indices) == nil then
+            mobIndicesByName[normName] = nil
+        end
+    end
+
+    for key, timestamp in pairs(mobability.recentAlerts) do
+        if now - timestamp > 2.0 then
+            mobability.recentAlerts[key] = nil
+        end
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -368,7 +458,10 @@ local function resetZoneState(e)
     flaggedEntities = T {}
     mobMapping = T {}
     mobTargets = T {}
+    mobIndicesByName = T {}
+    mobTargetsByIndex = T {}
     mobability.alertQueue = T {}
+    mobability.recentAlerts = T {}
 end
 
 --------------------------------------------------------------------------------
@@ -428,32 +521,40 @@ local function decodeActionPacket(e)
     pkt.Targets = T {}
 
     if tCount > 0 then
+        -- Avanza el puntero de bits sin construir tablas: los campos no se leen downstream.
+        local function skipAction()
+            read(5)   -- Reaction
+            read(12)  -- Animation
+            read(7)   -- SpecialEffect
+            read(3)   -- Knockback
+            local actionParam = read(17)
+            if not pkt.ActionParam then
+                pkt.ActionParam = actionParam
+            end
+            local actionMessage = read(10)
+            if not pkt.ActionMessage then
+                pkt.ActionMessage = actionMessage
+            end
+            read(31)  -- Flags
+            if read(1) == 1 then
+                read(10); read(17); read(10) -- AdditionalEffect
+            end
+            if read(1) == 1 then
+                read(10); read(14); read(10) -- SpikesEffect
+            end
+        end
+
+        local function parseTarget()
+            local tg = T {}
+            tg.Id = read(32)
+            local acCt = read(4)
+            for j = 1, acCt do
+                skipAction()
+            end
+            return tg
+        end
+
         for i = 1, tCount do
-            -- Avanza el puntero de bits sin construir tablas: los campos no se leen downstream.
-            local function skipAction()
-                read(5)   -- Reaction
-                read(12)  -- Animation
-                read(7)   -- SpecialEffect
-                read(3)   -- Knockback
-                read(17)  -- Param
-                read(10)  -- Message
-                read(31)  -- Flags
-                if read(1) == 1 then
-                    read(10); read(17); read(10) -- AdditionalEffect
-                end
-                if read(1) == 1 then
-                    read(10); read(14); read(10) -- SpikesEffect
-                end
-            end
-            local function parseTarget()
-                local tg = T {}
-                tg.Id = read(32)
-                local acCt = read(4)
-                for j = 1, acCt do
-                    skipAction()
-                end
-                return tg
-            end
             table.insert(pkt.Targets, parseTarget())
         end
     end
@@ -461,21 +562,63 @@ local function decodeActionPacket(e)
     return pkt
 end
 
+local function ResolveMonsterAbilityName(actionParam)
+    if not actionParam or actionParam <= 0x100 then
+        return nil
+    end
+
+    local resMgr = AshitaCore:GetResourceManager()
+    if not resMgr.GetString then
+        return nil
+    end
+
+    local monsterAbility = resMgr:GetString('monsters.abilities', actionParam - 0x100, 2)
+    if monsterAbility and monsterAbility ~= "" then
+        return monsterAbility
+    end
+    return nil
+end
+
+local function ResolvePacketActionName(pkt)
+    local actionParam = pkt.ActionParam
+    if not actionParam or actionParam <= 0 then
+        return nil, nil
+    end
+
+    local resMgr = AshitaCore:GetResourceManager()
+    if pkt.Type == 8 then
+        local spell = resMgr:GetSpellById(actionParam)
+        if spell and spell.Name[1] and spell.Name[1] ~= "" then
+            return spell.Name[1], "Spell"
+        end
+    elseif pkt.Type == 7 then
+        if pkt.ActionMessage == 43 or pkt.ActionMessage == 675 then
+            local monsterAbility = ResolveMonsterAbilityName(actionParam)
+            if monsterAbility then
+                return monsterAbility, "TP"
+            end
+        elseif pkt.ActionMessage == 326 then
+            local ability = resMgr:GetAbilityById(actionParam + 512)
+            if ability and ability.Name[1] and ability.Name[1] ~= "" then
+                return ability.Name[1], "TP"
+            end
+        end
+    end
+    return nil, nil
+end
+
 --------------------------------------------------------------------------------
 -- Funciones que manejan spells/TP/2H
 --------------------------------------------------------------------------------
 
--- Spells y TP
-local function HandleMobActionText(mobName, actionName, targetName, actionType, myName)
+local function EmitMobAction(mobName, actionName, targetName, actionType, myName, localIdx)
     -- Evitar self-cast del player
     if normalize(mobName) == normalize(myName) then
         return
     end
 
-    -- Filtrado por alert_mode + flagged
     if mobability.settings.alert_mode == 1 then
-        local mappedIndex = mobMapping[normalize(mobName)]
-        if not mappedIndex or not flaggedEntities[mappedIndex] then
+        if not localIdx or not flaggedEntities[localIdx] then
             return
         end
     else
@@ -483,8 +626,7 @@ local function HandleMobActionText(mobName, actionName, targetName, actionType, 
         if not cIdx or not flaggedEntities[cIdx] then
             return
         end
-        local mappedIndex = mobMapping[normalize(mobName)]
-        if not mappedIndex or mappedIndex ~= cIdx then
+        if not localIdx or localIdx ~= cIdx then
             return
         end
     end
@@ -497,12 +639,44 @@ local function HandleMobActionText(mobName, actionName, targetName, actionType, 
     end
 
     showFloatingAlert(msg, nil, 99999, mobName, actionName, actionType, {
-        mobColor = mobability.settings.alert_colors.mob,
-        spellColor = (actionType == "TP")
-                and mobability.settings.alert_colors.action_tp
-                or mobability.settings.alert_colors.action_spell,
-        target = targetName
+        target = targetName,
+        mobIndex = localIdx
     })
+end
+
+local function EmitPacketTwoHour(pkt, mobName, targetName, localIdx)
+    if (pkt.Type ~= 6 and pkt.Type ~= 11) or pkt.Param <= 0 then
+        return
+    end
+
+    local ability = AshitaCore:GetResourceManager():GetAbilityById(pkt.Param + 512)
+    if not ability or not ability.Name[1] or not knownTwoHourNames[ability.Name[1]] then
+        return
+    end
+
+    if mobability.settings.alert_mode == 1 then
+        if not flaggedEntities[localIdx] then
+            return
+        end
+    else
+        local currentIdx = GetCurrentTargetIndex()
+        if currentIdx ~= localIdx or not flaggedEntities[localIdx] then
+            return
+        end
+    end
+
+    local abilityName = ability.Name[1]
+    local msg = string.format('%s uses %s on %s', mobName, abilityName, targetName)
+    showFloatingAlert(msg, nil, 99999, mobName, abilityName, "2H", {
+        target = targetName,
+        mobIndex = localIdx
+    })
+end
+
+-- Spells y TP recibidos por texto
+local function HandleMobActionText(mobName, actionName, targetName, actionType, myName)
+    EmitMobAction(mobName, actionName, targetName, actionType, myName,
+            ResolveMappedMobIndex(mobName, targetName))
 end
 
 -- 2H => "Mob uses <2H> on <Target>"
@@ -512,8 +686,8 @@ local function HandleMobTwoHourText(mobName, abilityName, targetName, myName)
         return
     end
 
+    local mappedIndex = ResolveMappedMobIndex(mobName, targetName)
     if mobability.settings.alert_mode == 1 then
-        local mappedIndex = mobMapping[normalize(mobName)]
         if not mappedIndex or not flaggedEntities[mappedIndex] then
             return
         end
@@ -522,7 +696,6 @@ local function HandleMobTwoHourText(mobName, abilityName, targetName, myName)
         if not cIdx or not flaggedEntities[cIdx] then
             return
         end
-        local mappedIndex = mobMapping[normalize(mobName)]
         if not mappedIndex or mappedIndex ~= cIdx then
             return
         end
@@ -530,9 +703,8 @@ local function HandleMobTwoHourText(mobName, abilityName, targetName, myName)
 
     local msg = string.format('%s uses %s on %s', mobName, abilityName, targetName)
     showFloatingAlert(msg, nil, 99999, mobName, abilityName, "2H", {
-        mobColor = mobability.settings.alert_colors.mob,
-        spellColor = mobability.settings.alert_colors.action_spell,
-        target = targetName
+        target = targetName,
+        mobIndex = mappedIndex
     })
 end
 
@@ -560,9 +732,9 @@ ashita.events.register('text_in', 'text_in_cb', function(e)
         end
         if mob_name and spell_name then
             mob_name = mob_name:gsub('^The%s+', '')
-            local nm = normalize(mob_name)
-            if mobTargets[nm] then
-                targetName = mobTargets[nm]
+            local mappedTarget = ResolveMappedTarget(mob_name, targetName)
+            if mappedTarget then
+                targetName = mappedTarget
             end
             HandleMobActionText(mob_name, spell_name, targetName, "Spell", myName)
             return
@@ -578,9 +750,9 @@ ashita.events.register('text_in', 'text_in_cb', function(e)
         end
         if mob_tp and tp_move then
             mob_tp = mob_tp:gsub('^The%s+', '')
-            local nm = normalize(mob_tp)
-            if mobTargets[nm] then
-                targetNameTP = mobTargets[nm]
+            local mappedTarget = ResolveMappedTarget(mob_tp, targetNameTP)
+            if mappedTarget then
+                targetNameTP = mappedTarget
             end
             HandleMobActionText(mob_tp, tp_move, targetNameTP, "TP", myName)
             return
@@ -593,9 +765,9 @@ ashita.events.register('text_in', 'text_in_cb', function(e)
         if mob_2h and ability_2h and target_2h then
             mob_2h = mob_2h:gsub('^The%s+', '')
             if knownTwoHourNames[ability_2h] then
-                local nm = normalize(mob_2h)
-                if mobTargets[nm] then
-                    target_2h = mobTargets[nm]
+                local mappedTarget = ResolveMappedTarget(mob_2h, target_2h)
+                if mappedTarget then
+                    target_2h = mappedTarget
                 end
                 HandleMobTwoHourText(mob_2h, ability_2h, target_2h, myName)
             end
@@ -606,7 +778,7 @@ ashita.events.register('text_in', 'text_in_cb', function(e)
         if mob_2h2 and ability_2h2 then
             mob_2h2 = mob_2h2:gsub('^The%s+', '')
             if knownTwoHourNames[ability_2h2] then
-                local fallbackTarget = mobTargets[normalize(mob_2h2)] or mob_2h2
+                local fallbackTarget = ResolveMappedTarget(mob_2h2) or mob_2h2
                 HandleMobTwoHourText(mob_2h2, ability_2h2, fallbackTarget, myName)
             end
         end
@@ -636,87 +808,37 @@ ashita.events.register('packet_in', 'mobability_packet_in_cb', function(e)
 
         local entMgr = AshitaCore:GetMemoryManager():GetEntity()
         local mobName = entMgr:GetName(localIdx) or "Unknown"
-        mobMapping[normalize(mobName)] = localIdx
-
-        -- A) Chequeo de 2H => Type=6 (JobAbility) o Type=11 (NPC TP) + ability
-        do
-            local resMgr = AshitaCore:GetResourceManager()
-            if (pkt.Type == 6 or pkt.Type == 11) and pkt.Param > 0 then
-                local ab = resMgr:GetAbilityById(pkt.Param + 512)
-                if ab and ab.Name[1] then
-                    local abName = ab.Name[1]
-                    if knownTwoHourNames[abName] then
-                        -- => es una 2H
-                        local finalTarget = nil
-                        if #pkt.Targets > 0 then
-                            local tFirst = pkt.Targets[1]
-                            if tFirst and tFirst.Id then
-                                if tFirst.Id == pkt.UserId then
-                                    finalTarget = mobName
-                                else
-                                    local tIdx = ResolveLocalIndexFromId(tFirst.Id)
-                                    if tIdx > 0 then
-                                        local nm = entMgr:GetName(tIdx)
-                                        if nm and nm ~= "" then
-                                            finalTarget = nm
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                        if not finalTarget then
-                            finalTarget = mobName
-                        end
-
-                        -- Filtrado => si flagged o current target
-                        local alreadyFlagged = flaggedEntities[localIdx]
-                        local show = false
-                        if mobability.settings.alert_mode == 1 then
-                            if alreadyFlagged then
-                                show = true
-                            end
-                        else
-                            local cIdx = GetCurrentTargetIndex()
-                            if cIdx and cIdx == localIdx and flaggedEntities[cIdx] then
-                                show = true
-                            end
-                        end
-                        if show then
-                            local msg = string.format('%s uses %s on %s', mobName, abName, finalTarget)
-                            showFloatingAlert(msg, nil, 99999, mobName, abName, "2H", {
-                                mobColor = mobability.settings.alert_colors.mob,
-                                spellColor = mobability.settings.alert_colors.action_spell,
-                                target = finalTarget
-                            })
-                        end
-                    end
-                end
-            end
-        end
+        RecordMobIndex(mobName, localIdx)
 
         local alreadyFlagged = flaggedEntities[localIdx] and true or false
         local pets = GetPartyPets()
         local partyIDs = fetchPartyMembers()
         local addToHate = false
         local finalResolved = nil
+        local finalPriority = -1
 
         -- B) Marcamos hate / resolvemos a quién se dirige
         for _, tgt in ipairs(pkt.Targets) do
             if tgt and tgt.Id then
                 local resolvedName = nil
+                local resolvedPriority = -1
 
                 -- 1) Pet
                 if pets[tgt.Id] then
                     resolvedName = string.format("%s's pet: %s", pets[tgt.Id], GetPetNameById(tgt.Id))
+                    resolvedPriority = 3
                     addToHate = true
                     -- 2) Party
                 elseif IsInParty(tgt.Id, partyIDs) then
                     local tIdx = ResolveLocalIndexFromId(tgt.Id)
-                    resolvedName = entMgr:GetName(tIdx) or "Unknown"
+                    local partyName = tIdx > 0 and entMgr:GetName(tIdx) or nil
+                    resolvedName = (partyName and partyName ~= "") and partyName or "Unknown"
+                    resolvedPriority = (resolvedName ~= "Unknown") and 3 or 0
                     addToHate = true
                     -- 3) Self-cast
                 elseif pkt.UserId == tgt.Id then
                     resolvedName = mobName
+                    resolvedPriority = 1
                     -- 4) Jugador/NPC Externo => solo si ya flagged
                 else
                     if alreadyFlagged then
@@ -725,18 +847,21 @@ ashita.events.register('packet_in', 'mobability_packet_in_cb', function(e)
                             local nm = entMgr:GetName(tIdx)
                             if nm and nm ~= "" then
                                 resolvedName = nm
+                                resolvedPriority = 2
                             else
                                 resolvedName = "Unknown"
+                                resolvedPriority = 0
                             end
                         else
                             resolvedName = "Unknown"
+                            resolvedPriority = 0
                         end
                     end
                 end
 
-                if resolvedName then
+                if resolvedName and resolvedPriority > finalPriority then
                     finalResolved = resolvedName
-                    break
+                    finalPriority = resolvedPriority
                 end
             end
         end
@@ -746,33 +871,68 @@ ashita.events.register('packet_in', 'mobability_packet_in_cb', function(e)
         end
         if finalResolved then
             mobTargets[normalize(mobName)] = finalResolved
+            mobTargetsByIndex[localIdx] = finalResolved
+        end
+
+        EmitPacketTwoHour(pkt, mobName, finalResolved or mobName, localIdx)
+
+        -- Detección desde el paquete original para convivir con addons que modifican el chat.
+        if pkt.Type == 8 or pkt.Type == 7 then
+            local actionName, actionType = ResolvePacketActionName(pkt)
+            if actionName and actionType then
+                local myName = AshitaCore:GetMemoryManager():GetParty():GetMemberName(0)
+                EmitMobAction(mobName, actionName, finalResolved or mobName, actionType, myName, localIdx)
+            end
         end
 
         -- C) Spell/TP final => cierra la alerta
         if pkt.Type == 4 or pkt.Type == 11 then
             local resMgr = AshitaCore:GetResourceManager()
-            local finalName = nil
-            local sp = resMgr:GetSpellById(pkt.Param)
-            if sp and sp.Name[1] and sp.Name[1] ~= "" then
-                finalName = sp.Name[1]
-            else
+            local finalNames = T {}
+            if pkt.Type == 4 then
+                local sp = resMgr:GetSpellById(pkt.Param)
+                if sp and sp.Name[1] and sp.Name[1] ~= "" then
+                    table.insert(finalNames, normalize(sp.Name[1]))
+                end
+            elseif pkt.Type == 11 then
+                local monsterAbility = ResolveMonsterAbilityName(pkt.Param)
+                if monsterAbility then
+                    table.insert(finalNames, normalize(monsterAbility))
+                end
                 local ab = resMgr:GetAbilityById(pkt.Param + 512)
                 if ab and ab.Name[1] and ab.Name[1] ~= "" then
-                    finalName = ab.Name[1]
+                    table.insert(finalNames, normalize(ab.Name[1]))
                 end
             end
 
-            if finalName then
+            if #finalNames > 0 then
+                local exactMatch = nil
+                local fallbackMatch = nil
+                local fallbackCount = 0
                 for i, alert in ipairs(mobability.alertQueue) do
                     if alert.mob and alert.spell
-                            and normalize(alert.mob) == normalize(mobName) then
-                        if (alert.type == "Spell"
-                                and normalize(alert.spell) == normalize(finalName))
-                                or (alert.type == "TP" or alert.type == "2H") then
-                            alert.expires = os.clock()
+                            and normalize(alert.mob) == normalize(mobName)
+                            and alert.mobIndex == localIdx then
+                        local normalizedSpell = normalize(alert.spell)
+                        if alert.type == "Spell" or alert.type == "TP" then
+                            for _, finalName in ipairs(finalNames) do
+                                if normalizedSpell == finalName then
+                                    exactMatch = alert
+                                    break
+                                end
+                            end
+                        end
+                        if exactMatch then
                             break
+                        elseif alert.type == "TP" then
+                            fallbackMatch = alert
+                            fallbackCount = fallbackCount + 1
                         end
                     end
+                end
+                local alertToClose = exactMatch or (fallbackCount == 1 and fallbackMatch) or nil
+                if alertToClose then
+                    alertToClose.expires = os.clock()
                 end
             end
         end
@@ -859,11 +1019,12 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
 
         -- Render de las alertas
         local count = 0
-        for _, alert in ipairs(mobability.alertQueue) do
+        for i = #mobability.alertQueue, 1, -1 do
             if mobability.settings.limit_alerts > 0 and count >= mobability.settings.limit_alerts then
                 break
             end
             count = count + 1
+            local alert = mobability.alertQueue[i]
 
             if alert.mob and alert.spell then
                 -- Dibuja “Mob” (rojo)
@@ -1101,8 +1262,6 @@ ashita.events.register('d3d_present', 'mobability_present_cb', function()
             imgui.Spacing()
             if imgui.Button("Test Alert") then
                 showFloatingAlert("Test alert: Config mode activated", { 0, 1, 1, 1 }, 10, "Test", "Test", "Spell", {
-                    mobColor = mobability.settings.alert_colors.mob,
-                    spellColor = mobability.settings.alert_colors.action_spell,
                     target = "TestTarget"
                 })
                 mobability.testAlertActive = true

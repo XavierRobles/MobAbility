@@ -1,6 +1,6 @@
 # Mobability
 
-**Version:** 1.0.3  
+**Version:** 1.0.4
 **Author:** Waky  
 **License:** GNU General Public License v3  
 **Link:** [https://github.com/XavierRobles/MobAbility](https://github.com/XavierRobles/MobAbility)
@@ -16,15 +16,43 @@
 ---
 > ## 📢 Notice
 > 
-> This addon is completely transparent in its operation: it acts only on the client, processing information that is already displayed in the game chat. It does not modify any game files, does not send data to the server, and consumes minimal resources, operating solely with the local data available.
+> This addon operates entirely on the client, processing incoming game packets and information displayed in the game chat. It does not modify game files or send data to the server, and it operates solely with locally available data.
 ---
 > 
-> Este addon es completamente transparente en su funcionamiento: actúa solo en el cliente, procesando la información que ya muestra el chat del juego. No modifica ningún archivo del juego, no envía datos al servidor y consume recursos mínimos, operando únicamente con los datos locales disponibles.
+> Este addon funciona íntegramente en el cliente, procesando paquetes entrantes del juego y la información mostrada en el chat. No modifica archivos del juego ni envía datos al servidor, y opera únicamente con datos disponibles localmente.
 
 
 ---
 
 ## 📌 Changelog
+
+### v1.0.4 (English)
+
+- Added compatibility with combat-log addons such as SimpleLog by detecting spell and TP move starts from the original incoming action packet.
+- Kept chat-text detection as a fallback and added deduplication to prevent duplicate alerts and sounds.
+- Improved detection for monster TP moves using action messages and local monster ability resources.
+- Improved mob and target resolution when multiple enemies share the same name.
+- Improved AoE target processing and party-hate detection.
+- Fixed 2H abilities being missed when they were the mob's first action against the party.
+- Improved spell and TP alert cleanup by matching the exact mob and action whenever possible.
+- New alerts are now displayed before older alerts when the configured alert limit is reached.
+- Sound alerts can now continue working when floating alerts are disabled.
+
+---
+
+### v1.0.4 (Español)
+
+- Se añadió compatibilidad con addons de registro de combate como SimpleLog, detectando el inicio de hechizos y TP moves desde el paquete de acción entrante original.
+- Se mantuvo la detección mediante texto del chat como respaldo y se añadió deduplicación para evitar alertas y sonidos duplicados.
+- Se mejoró la detección de TP moves de monstruos usando mensajes de acción y recursos locales de habilidades.
+- Se mejoró la resolución de mobs y objetivos cuando varios enemigos comparten el mismo nombre.
+- Se mejoró el procesamiento de objetivos AoE y la detección de hate con la party.
+- Se corrigió la pérdida de habilidades 2H cuando eran la primera acción del mob contra la party.
+- Se mejoró la eliminación de alertas de hechizos y TP comparando el mob y la acción exactos cuando es posible.
+- Las alertas nuevas ahora aparecen antes que las antiguas cuando se alcanza el límite configurado.
+- Los sonidos de alerta ahora pueden seguir funcionando aunque las alertas flotantes estén desactivadas.
+
+---
 
 ### v1.0.3 (English)
 
@@ -165,7 +193,7 @@ In game, type `/mb` or `/mobability` in the chat to open the Mobability configur
   Mobability has been designed for Ashita, aiming to enhance your combat experience in Final Fantasy XI with clear and configurable alerts.
 
 - **Server:**  
-  his addon is optimized for private FFXI servers. It has not been tested on the Retail version.
+  This addon is optimized for private FFXI servers. It has not been tested on the Retail version.
 
 - **License:**  
   Mobability is distributed under the GNU General Public License v3.
